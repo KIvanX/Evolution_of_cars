@@ -3,17 +3,61 @@ import math
 from random import random
 
 
+def draw_NN(xs, ys, size, window, brain, input):
+    neurons = [input]
+    list_weight = []
+    for layer in range(len(brain)):
+        neurons.append(len(brain[layer]) // neurons[-1])
+        list_weight += brain[layer]
+    max_neuron = max(neurons)
+
+    all_cord = []
+    for layer in range(len(neurons)):
+        cord = []
+        for i in range(neurons[layer]):
+            k = (max_neuron - neurons[layer]) / 2 * size * 3
+            x, y = xs + size * 15 * layer, ys + k + i * size * 3
+            pg.draw.circle(window, [0, 0, 0], (x, y), size)
+            cord.append((x, y))
+        all_cord.append(cord)
+
+    k = 0
+    minl = min(list_weight)
+    for i in range(len(all_cord)-1):
+        for x, y in all_cord[i]:
+            for x1, y1 in all_cord[i+1]:
+                color = [int((list_weight[k]-minl)/(max(list_weight)-minl) * 250)]*3
+                pg.draw.line(window, color, (x, y), (x1, y1))
+                k += 1
+
+
 class Car:
     def __init__(self, x, y, window, background):
         k = int(random()*6)+1
         image = pg.image.load('images/car' + str(k) + '.png')
-        # image.set_colorkey((255, 255, 255))
         image = pg.transform.rotate(image, 90)
 
-        self.brain = [[(random()-0.5) for _ in range(40)],
-                      [(random()-0.5) for _ in range(16)]]
-        # self.brain = [[1.175, 0.509, -0.161, -2.653, -1.304, 0.665, -0.171, 2.652, -1.224, 0.046, 1.268, -0.635, -0.256, 0.354, -0.134, -2.026, -0.014, 1.11, -2.907, -0.084, -0.133, -1.339, -1.984, -1.279, 1.267, -0.664, -2.082, 3.788, -2.847, 1.558, -0.235, -1.408, 3.072, 0.359, -1.369, 0.153, 0.416, 0.988, -0.702, 2.594],
-        #               [1.022, -0.789, 1.219, -0.413, -2.422, 2.486, 1.358, 2.981, -0.944, -1.224, -1.306, 0.533, 0.717, -0.135, -1.511, -4.478]]
+        # self.brain = [[(random()-0.5) for _ in range(40)],
+        #               [(random()-0.5) for _ in range(16)]]
+
+        # self.brain = [[22.84314458508083, -2.403786660213477, 4.067291338767675, -0.17535794537611993, -18.588607027629543,
+        #   0.9063969558308813, 13.668292261966467, -9.633478402673452, -23.061376875688893, -4.9157912384614715,
+        #   7.368097090186204, 1.6835219424434833, 5.667847200524733, -20.366387560709352, -36.080943080583715,
+        #   -20.469515530218285, -15.08489601214686, 1.1635338168581209, 3.701625122988467, 18.70740951741545,
+        #   -7.717373947595668, -15.108877866065743, 4.191617367320692, -11.395812655607875, -8.823872282794799,
+        #   -9.996330901436945, -7.304448546309481, 0.12063035002865745, -7.079232422239365, 22.13100851499116,
+        #   -18.828551988300475, -4.1196580158521305, -2.4677846981351443, -8.787015826609935, 0.21528613185762008,
+        #   -0.1244595722625797, -4.833825099853969, -8.758510801836945, 8.831100182149097, -18.9785963488911],
+        #  [-0.8679404350638094, -24.56595774048922, -1.0714558828437029, 3.978776934645174, 7.997781732048607,
+        #   5.69903247169785, -7.964746853149648, -0.30293168447046637, 9.115951369708194, -4.886571208722541,
+        #   -5.256817214352713, -26.266776138250183, -0.47471345065048887, -21.835102456964062, -5.638944208869452,
+        #   26.27073401077757]]
+
+        self.brain = [[(random()-0.5) for _ in range(30)],
+                      [(random()-0.5) for _ in range(24)],
+                      [(random()-0.5) for _ in range(8)]]
+
+        # self.brain = [[(random()-0.5) for _ in range(10)]]
 
         self.car = pg.transform.scale(image, (20, 33))
         self.window, self.background = window, background
@@ -74,7 +118,8 @@ class Car:
 
     def move(self):
         lengths = self.get_lengths([-90, 45, 0, 45, 90])
-        speed, a = self.think([l / 100 for l in lengths])
+
+        speed, a = self.think([leng / 100 for leng in lengths])
 
         self.speed = int(speed * 10)
         self.ang += int((a - 0.5) * 10)
@@ -114,14 +159,15 @@ while game:
                          + '   Шаг ' + str(step), True, (0, 50, 0))
     window.blit(render, (10, 10))
 
-    test = False
+    num_live = 0
     for car in cars:
         if not car.crash:
-            test = True
+            num_live += 1
             car.move()
-            car.draw()
+            if num_live == 1:
+                car.draw()
 
-    if not test or step > 2000:
+    if num_live == 0 or step > 2000:
         step = 0
         gener += 1
 
@@ -138,6 +184,8 @@ while game:
 
         cars = children
 
+    draw_NN(10, 470, 3, window, cars[0].brain, 5)
+
     pg.display.flip()
 
     for e in pg.event.get():
@@ -147,8 +195,8 @@ while game:
         if e.type == pg.KEYUP:
             if e.key == pg.K_g:
                 print(cars[0].brain)
-            if e.key in [pg.K_1, pg.K_2, pg.K_3, pg.K_4]:
-                level = [pg.K_1, pg.K_2, pg.K_3, pg.K_4].index(e.key) + 1
+            if e.key in [pg.K_1, pg.K_2, pg.K_3, pg.K_4, pg.K_5]:
+                level = [pg.K_1, pg.K_2, pg.K_3, pg.K_4, pg.K_5].index(e.key) + 1
                 background = pg.image.load('images/background' + str(level) + '.png')
 
     if pg.key.get_pressed()[pg.K_UP]:
@@ -162,4 +210,3 @@ while game:
 
     if pg.key.get_pressed()[pg.K_LEFT] and FPS > 1:
         FPS -= 1
-
