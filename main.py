@@ -1,10 +1,10 @@
+from random import random
 import pygame as pg
 import math
-from random import random
 
 
-def draw_NN(xs, ys, size, window, brain, input):
-    neurons = [input]
+def draw_NN(xs, ys, size, window, brain):
+    neurons = [5]
     list_weight = []
     for layer in range(len(brain)):
         neurons.append(len(brain[layer]) // neurons[-1])
@@ -33,9 +33,8 @@ def draw_NN(xs, ys, size, window, brain, input):
 
 class Car:
     def __init__(self, x, y, window, background):
-        k = int(random()*6)+1
-        image = pg.image.load('images/car' + str(k) + '.png')
-        image = pg.transform.rotate(image, 90)
+        image_0 = pg.image.load(f'images/car{int(random() * 6) + 1}.png')
+        image = pg.transform.rotate(image_0, 90)
 
         # self.brain = [[(random()-0.5) for _ in range(40)],
         #               [(random()-0.5) for _ in range(16)]]
@@ -53,11 +52,11 @@ class Car:
         #   -5.256817214352713, -26.266776138250183, -0.47471345065048887, -21.835102456964062, -5.638944208869452,
         #   26.27073401077757]]
 
-        self.brain = [[(random()-0.5) for _ in range(30)],
-                      [(random()-0.5) for _ in range(24)],
-                      [(random()-0.5) for _ in range(8)]]
+        # self.brain = [[(random()-0.5) for _ in range(30)],
+        #               [(random()-0.5) for _ in range(24)],
+        #               [(random()-0.5) for _ in range(8)]]
 
-        # self.brain = [[(random()-0.5) for _ in range(10)]]
+        self.brain = [[(random()-0.5) for _ in range(10)]]
 
         self.car = pg.transform.scale(image, (20, 33))
         self.window, self.background = window, background
@@ -79,12 +78,12 @@ class Car:
         for a in [30, 150, 210, 330]:
             x1 = x + w // 2 + math.sin(math.radians(self.ang - a)) * leng
             y1 = y + h // 2 + math.cos(math.radians(self.ang - a)) * leng
-            c = background.get_at((int(x1), int(y1)))
+            c = self.background.get_at((int(x1), int(y1)))
             if abs(c[0] - 35) + abs(c[1] - 177) + abs(c[2] - 77) < 100 or sum(c[:3]) < 100:
                 return True
         return False
 
-    def think(self, lengths):
+    def _think(self, lengths: list[5]):
         outputs = lengths
         arr_outputs = [outputs]
         for weights in self.brain:
@@ -101,7 +100,7 @@ class Car:
             outputs = inputs.copy()
         return outputs
 
-    def get_lengths(self, angs):
+    def _get_lengths(self, angs: list[5]):
         w, h = self.car.get_size()
         lengths = []
         for k in angs:
@@ -109,7 +108,7 @@ class Car:
             while leng < 300 and not block:
                 x1 = self.x + w // 2 - math.sin(math.radians(angle)) * leng
                 y1 = self.y + h // 2 - math.cos(math.radians(angle)) * leng
-                c = background.get_at((int(x1), int(y1)))
+                c = self.background.get_at((int(x1), int(y1)))
                 if abs(c[0] - 127) + abs(c[1] - 127) + abs(c[2] - 127) > 100:
                     block = True
                 leng += 1
@@ -117,9 +116,9 @@ class Car:
         return lengths
 
     def move(self):
-        lengths = self.get_lengths([-90, 45, 0, 45, 90])
+        lengths = self._get_lengths([-90, 45, 0, 45, 90])
 
-        speed, a = self.think([leng / 100 for leng in lengths])
+        speed, a = self._think([leng / 100 for leng in lengths])
 
         self.speed = int(speed * 10)
         self.ang += int((a - 0.5) * 10)
@@ -137,24 +136,24 @@ background = pg.image.load('images/background1.png')
 n, m = background.get_size()
 pg.init()
 window = pg.display.set_mode((n, m))
-pg.display.set_caption('Эволюция 3')
+pg.display.set_caption('Эволюция машинок')
 clock = pg.time.Clock()
 font = pg.font.SysFont('cambriacambriamath', 22)
 
-popul, parents, mut = 12, 2, 150
+POPULATION, PARENTS = 12, 2
 
 cars = []
-for _ in range(popul):
+for _ in range(POPULATION):
     cars.append(Car(90, 250, window, background))
 
-game, FPS, gener, step = True, 150, 1, 0
+game, FPS, mutations, gener, step = True, 150, 100, 1, 0
 while game:
     step += 1
     clock.tick(FPS)
 
     window.blit(background, (0, 0))
     render = font.render('FPS ' + str(FPS)
-                         + '   Мутации ' + str(mut)
+                         + '   Мутации ' + str(mutations)
                          + '   Поколение ' + str(gener)
                          + '   Шаг ' + str(step), True, (0, 50, 0))
     window.blit(render, (10, 10))
@@ -167,25 +166,24 @@ while game:
             if num_live == 1:
                 car.draw()
 
-    if num_live == 0 or step > 2000:
+    if num_live == 0 or step > 1500:
         step = 0
         gener += 1
 
-        cars = sorted(cars, reverse=True, key=lambda car: car.score)[:parents]
+        cars = sorted(cars, reverse=True, key=lambda car: car.score)[:PARENTS]
 
         children = []
         for car in cars:
-            for i in range(popul // parents):
+            for i in range(POPULATION // PARENTS):
                 child = Car(90, 250, window, background)
                 for layer in range(len(child.brain)):
                     for gen in range(len(child.brain[layer])):
-                        child.brain[layer][gen] = car.brain[layer][gen] + (random() - 0.5) / 100 * mut
+                        child.brain[layer][gen] = car.brain[layer][gen] + (random() - 0.5) / 100 * mutations
                 children.append(child)
 
         cars = children
 
-    draw_NN(10, 470, 3, window, cars[0].brain, 5)
-
+    draw_NN(10, 470, 3, window, cars[0].brain)
     pg.display.flip()
 
     for e in pg.event.get():
@@ -200,10 +198,10 @@ while game:
                 background = pg.image.load('images/background' + str(level) + '.png')
 
     if pg.key.get_pressed()[pg.K_UP]:
-        mut += 1
+        mutations += 1
 
-    if pg.key.get_pressed()[pg.K_DOWN] and mut > 0:
-        mut -= 1
+    if pg.key.get_pressed()[pg.K_DOWN] and mutations > 0:
+        mutations -= 1
 
     if pg.key.get_pressed()[pg.K_RIGHT] and FPS < 400:
         FPS += 1
